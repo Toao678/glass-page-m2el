@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PC28 预测系统 v12.2 · pc28.help 实拉版</title>
+<title>PC28 预测系统 v12.2 · 3658kj 官方源实拉版</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: #f5f6fa; color: #2c3e50; padding: 12px; font-size: 13px; line-height: 1.6; }
 h1 { text-align: center; font-size: 16px; color: #1a3a5c; margin-bottom: 8px; }
 h2 { font-size: 14px; color: #c0392b; margin: 10px 0 6px; border-bottom: 1px solid #dde3ec; padding-bottom: 4px; }
 .panel { background: #ffffff; border: 1px solid #dde3ec; border-radius: 8px; padding: 10px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-.row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+.row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }
 .row span { color: #5a6f8a; }
 .row strong { color: #1a1a1a; word-break: break-all; text-align: right; }
 .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; color: #fff; }
@@ -33,13 +33,14 @@ th { background: #eef2f7; color: #1a3a5c; }
 </head>
 <body>
 
-<h1>🎯 加拿大28 · 双模型预测系统 v12.2(pc28.help 实拉)</h1>
+<h1>🎯 加拿大28 · 双模型预测系统 v12.2(3658kj 官方源)</h1>
 
 <div class="panel">
-  <h2>🔗 接口配置(pc28.help)</h2>
-  <div class="row"><span>API_URL:</span><strong>https://pc28.help/api/kj.json?nbr=100</strong></div>
+  <h2>🔗 接口配置(3658kj)</h2>
+  <div class="row"><span>API_URL:</span><strong>https://api.3658kj.com/api/v1/trend/getHistoryList?lotCode=10029&pageSize=100&pageNum=0</strong></div>
   <div class="row"><span>方法:</span><strong>GET</strong></div>
-  <div class="row"><span>轮询:</span><strong>15s</strong></div>
+  <div class="row"><span>轮询:</span><strong>10s</strong></div>
+  <div class="row"><span>解析:</span><strong>drawCode:"a,b,c"→三码→和值；drawIssue=期号；drawTime=开奖时间</strong></div>
 </div>
 
 <div class="panel">
@@ -55,17 +56,29 @@ th { background: #eef2f7; color: #1a3a5c; }
 </div>
 
 <div class="panel">
+  <h2>🧮 模型计算方式（实时展开）</h2>
+  <div class="row"><span>模型A 各窗口得分:</span><strong id="a-windows">--</strong></div>
+  <div class="row"><span>模型A 加权概率:</span><strong id="a-prob">大 0% / 小 0%</strong></div>
+  <div class="row"><span>模型A 走势判定:</span><strong id="a-type">--</strong></div>
+  <div class="row"><span>模型B 最优seed:</span><strong id="b-seed">--</strong></div>
+  <div class="row"><span>模型B 命中率(全样本):</span><strong id="b-overall">--</strong></div>
+  <div class="row"><span>模型B 近30期命中率:</span><strong id="b-recent">--</strong></div>
+  <div class="row"><span>模型B 单/双权重:</span><strong id="b-prob">单 0% / 双 0%</strong></div>
+  <div class="row"><span>模型B 推三组:</span><strong id="b-groups">--</strong></div>
+</div>
+
+<div class="panel">
   <h2>📈 回测统计(本会话最多100期)</h2>
   <div class="row"><span>已验证:</span><strong id="stat-total">0</strong></div>
-  <div class="row"><span>A模型(大/小):</span><strong id="stat-a">--</strong></div>
-  <div class="row"><span>B模型(单/双):</span><strong id="stat-b">--</strong></div>
-  <div class="row"><span>组合:</span><strong id="stat-final">--</strong></div>
+  <div class="row"><span>A模型 正确/错误/概率:</span><strong id="stat-a">正确0 错误0 0%</strong></div>
+  <div class="row"><span>B模型 正确/错误/概率:</span><strong id="stat-b">正确0 错误0 0%</strong></div>
+  <div class="row"><span>组合 正确/错误/概率:</span><strong id="stat-final">正确0 错误0 0%</strong></div>
 </div>
 
 <div class="panel">
   <h2>📋 最近30期</h2>
   <table>
-    <thead><tr><th>期号</th><th>开奖结果</th><th>类型</th><th>预测答案</th><th>结果</th></tr></thead>
+    <thead><tr><th>期号</th><th>开奖结果</th><th>和值</th><th>类型</th><th>预测答案</th><th>结果</th></tr></thead>
     <tbody id="history-body"></tbody>
   </table>
 </div>
@@ -73,490 +86,236 @@ th { background: #eef2f7; color: #1a3a5c; }
 <div id="log"><p>⏳ 启动中...</p></div>
 
 <script>
-// ============================================================
-// 常量（与Python v12.2 完全一致）
-// ============================================================
-const API_URL = "https://pc28.help/api/kj.json?nbr=100";
-const CHECK_INTERVAL = 15000;
-const STORAGE_KEY = "pc28_v122_session";
-const CACHE_KEY = "pc28_v122_cache";
+const API_URL = "https://api.3658kj.com/api/v1/trend/getHistoryList?lotCode=10029&pageSize=100&pageNum=0";
+const FETCH_TIMEOUT = 10000;
+const CHECK_INTERVAL = 10000;
 
 const COMBO_ALPHA = 0.50, COMBO_BETA = 0.50;
 const A_WINDOWS = [10, 20, 30, 50, 100];
 const A_DEFAULT_WINDOW_WEIGHTS = {10:0.10, 20:0.15, 30:0.20, 50:0.25, 100:0.30};
 const A_RELIABILITY_FLOOR = 0.30;
 const A_REVERSAL_STREAK = 4;
-const A_TYPE_WINDOWS = [10, 20, 30];
-const A_MAX_WEIGHT_DEVIATION = 0.10;
-const A_ANOMALY_GAP = 5;
-
 const B_SEED_MIN = 1000, B_SEED_MAX = 50000, B_COARSE_STEP = 10;
-const B_REFINE_TOP = 100;
 const B_TOP_SEEDS = 50, B_FINAL_SEEDS = 7;
 const B_SCORE_WEIGHTS = [0.40, 0.30, 0.20, 0.10];
 const B_GROUP_SMOOTHING = 0.5;
-const B_EXCLUDED_PENALTY_WEIGHT = 0.10;
-const B_RECENT_EWMA_ALPHA = 0.35;
-const B_EWMA_SECONDARY_WEIGHT = 0.10;
 const ALL_TYPES = ["大单","大双","小单","小双"];
-const COMBO_TYPES = ["大单","大双","小单","小双"];
 
-const DEFAULT_WEIGHT = [0.4, 0.3, 0.3];
-const WEIGHT_UPDATE_INTERVAL = 20;
-
-// ============================================================
-// localStorage 持久化（仅 session + historyData 缓存，不动解析和算法）
-// ============================================================
-function save_session() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(session)); } catch(e) {}
-}
-function load_session() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw);
-    return { total: p.total||0, hitA: p.hitA||0, hitB: p.hitB||0, hitF: p.hitF||0, records: p.records||[] };
-  } catch(e) { return null; }
-}
-function save_cache() {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify(historyData)); } catch(e) {}
-}
-function load_cache() {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch(e) { return null; }
-}
-
-// ============================================================
-// 工具函数
-// ============================================================
-function get_type(sum_val) {
-  const size = sum_val >= 14 ? "大" : "小";
-  const parity = sum_val % 2 === 1 ? "单" : "双";
+function getType(sum) {
+  const size = sum >= 14 ? "大" : "小";
+  const parity = sum % 2 === 1 ? "单" : "双";
   return size + parity;
 }
-function is_big(sum_val) { return sum_val >= 14; }
-function get_size(sum_val) { return is_big(sum_val) ? "大" : "小"; }
-function get_parity(sum_val) { return sum_val % 2 === 1 ? "单" : "双"; }
-
-function get_time_slot(hour, minute) {
-  if (hour === 19 && minute < 30) return "维护时段";
-  if (hour < 6) return "凌晨";
-  if (hour < 8) return "早上";
-  if (hour < 12) return "上午";
-  if (hour < 14) return "中午";
-  if (hour < 18) return "下午";
-  if (hour < 19) return "傍晚";
-  return "晚上";
-}
-function is_maintenance_time(hour, minute) { return hour === 19 && minute < 30; }
+function isBig(sum) { return sum >= 14; }
 
 function mulberry32(seed) {
-  function imul32(a, b) {
-    let v = ((a & 0xFFFFFFFF) * (b & 0xFFFFFFFF)) & 0xFFFFFFFF;
-    if (v & 0x80000000) v -= 0x100000000;
-    return v;
-  }
-  let a = (parseInt(seed) & 0xFFFFFFFF) + 0x6D2B79F5; a &= 0xFFFFFFFF;
-  let t = imul32((a ^ (a >>> 15)), (1 | a));
-  t = (t + imul32((t ^ (t >>> 7)), (61 | t))) & 0xFFFFFFFF ^ t;
-  t = t >>> 0; t ^= (t >>> 14);
-  return (t >>> 0) / 4294967296.0;
+  function imul32(a,b){ let v=((a&0xFFFFFFFF)*(b&0xFFFFFFFF))&0xFFFFFFFF; if(v&0x80000000)v-=0x100000000; return v; }
+  let a=(parseInt(seed)&0xFFFFFFFF)+0x6D2B79F5; a&=0xFFFFFFFF;
+  let t=imul32((a^(a>>15)),(1|a));
+  t=(t+imul32((t^(t>>7)),(61|t)))^t; t&=0xFFFFFFFF; t^=(t>>14);
+  return ((t&0xFFFFFFFF)/4294967296.0);
 }
-
-const SEQUENCES = [
-  [0,3,9,12,15,18,21,24,27],
-  [1,4,7,10,13,16,19,22,25],
-  [2,5,8,11,14,17,20,23,26]
-];
-function is_same_seq(a, b) { return SEQUENCES.some(s => s.includes(a) && s.includes(b)); }
-
-const RULES = {
-  same: {"小双":["小双","大双","大单"],"小单":["小单","大单","大双"],"大双":["大双","小双","小单"],"大单":["大单","小单","小双"]},
-  diff: {"小双":["小双","小单","大单"],"小单":["小单","小双","大双"],"大双":["大双","大单","小单"],"大单":["大单","大双","小双"]}
+const SEQUENCES=[[0,3,9,12,15,18,21,24,27],[1,4,7,10,13,16,19,22,25],[2,5,8,11,14,17,20,23,26]];
+function isSameSeq(a,b){ return SEQUENCES.some(s=>s.includes(a)&&s.includes(b)); }
+const RULES={
+  same:{"小双":["小双","大双","大单"],"小单":["小单","大单","大双"],"大双":["大双","小双","小单"],"大单":["大单","小单","小双"]},
+  diff:{"小双":["小双","小单","大单"],"小单":["小单","小双","大双"],"大双":["大双","大单","小单"],"大单":["大单","大双","小双"]}
 };
-
-function get_prediction(seed, prev) {
-  const rv = mulberry32(seed + parseInt(prev.nbr || prev.expect));
-  const prod = rv * prev.sum;
-  const digits = prod.toFixed(3).replace(".", "");
-  const final_sum = [...digits].reduce((a, d) => a + parseInt(d), 0);
-  const ct = get_type(final_sum);
-  const rand_str = rv.toFixed(8);
-  const rand_digits = rand_str.split(".")[1].substring(0, 3);
-  const rand_sum = [...rand_digits].reduce((a, d) => a + parseInt(d), 0);
-  const same = is_same_seq(rand_sum, prev.sum);
-  return [...RULES[same ? "same" : "diff"][ct]];
+function getBPrediction(seed, prev){
+  const rv=mulberry32(seed+parseInt(prev.nbr));
+  const prod=rv*prev.sum;
+  const digits=prod.toFixed(3).replace(".","");
+  const fs=[...digits].map(Number).reduce((a,b)=>a+b,0);
+  const ct=getType(fs);
+  const rs=[...rv.toFixed(8).split(".")[1].slice(0,3)].map(Number).reduce((a,b)=>a+b,0);
+  const same=isSameSeq(rs,prev.sum);
+  return RULES[same?"same":"diff"][ct].slice();
 }
 
-// ============================================================
-// 模型A
-// ============================================================
-function recent(h, w) { return h.length >= w ? h.slice(-w) : h; }
-function p_big(h, w) { const r = recent(h, w); if (!r.length) return 0.5; return r.filter(x => is_big(x.sum)).length / r.length; }
-function max_streak(h, w) { const r = recent(h, w); if (!r.length) return 0; let m = 1, c = 1; for (let i = 1; i < r.length; i++) { if (is_big(r[i].sum) === is_big(r[i-1].sum)) { c++; m = Math.max(m, c); } else c = 1; } return m; }
-function alternation(h, w) { const r = recent(h, w); let a = 0; for (let i = 1; i < r.length; i++) if (is_big(r[i].sum) !== is_big(r[i-1].sum)) a++; return a; }
-
-function _judge_single(h, w) {
-  if (h.length < w) return "均衡型";
-  const p = p_big(h, w), s = max_streak(h, w), a = alternation(h, w);
-  if (s <= 2 && a >= Math.max(6, Math.floor(w * 0.6))) return "交替型";
-  if ((p >= 0.60 || p <= 0.40) && s >= 4) return "趋势型";
-  if ((p >= 0.55 || p <= 0.45) && s <= 2 && a <= Math.max(5, Math.floor(w * 0.5))) return "信号型";
-  return "均衡型";
-}
-function judge_type(h) {
-  if (h.length < 10) return "均衡型";
-  const types = A_TYPE_WINDOWS.filter(w => h.length >= w).map(w => _judge_single(h, w));
-  if (!types.length) return "均衡型";
-  const cnt = {}; types.forEach(t => cnt[t] = (cnt[t] || 0) + 1);
-  const best = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
-  if (best[0] !== "均衡型" && best[1] < 2) return "均衡型";
+function recent(h,w){ return h.length>=w?h.slice(-w):h; }
+function pBig(h,w){ const r=recent(h,w); if(!r.length)return 0.5; return r.filter(x=>isBig(x.sum)).length/r.length; }
+function maxStreak(h,w){ const r=recent(h,w); if(!r.length)return 0; let m=1,c=1; for(let i=1;i<r.length;i++){ if(isBig(r[i].sum)===isBig(r[i-1].sum)){c++;m=Math.max(m,c);}else c=1;} return m; }
+function alternation(h,w){ const r=recent(h,w); let a=0; for(let i=1;i<r.length;i++) if(isBig(r[i].sum)!==isBig(r[i-1].sum))a++; return a; }
+function judgeType(h){
+  if(h.length<10)return "均衡型";
+  const ws=[10,20,30].filter(w=>h.length>=w);
+  const types=ws.map(w=>{
+    const p=pBig(h,w),s=maxStreak(h,w),a=alternation(h,w);
+    if(s<=2&&a>=Math.max(6,Math.floor(w*0.6)))return "交替型";
+    if((p>=0.6||p<=0.4)&&s>=4)return "趋势型";
+    if((p>=0.55||p<=0.45)&&s<=2&&a<=Math.max(5,Math.floor(w*0.5)))return "信号型";
+    return "均衡型";
+  });
+  const cnt={}; types.forEach(t=>cnt[t]=(cnt[t]||0)+1);
+  const best=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+  if(best[0]!=="均衡型"&&best[1]<2)return "均衡型";
   return best[0];
 }
-
-function generate_weight_candidates() {
-  const cands = [];
-  for (let i = 0; i < 13; i++) cands.push(Math.round((0.15 + i * 0.05) * 100) / 100);
-  return cands;
+function modelAWindow(h,w){
+  const r=recent(h,w); if(!r.length)return{score:0.5,pBig:0.5,reliability:0};
+  const p=pBig(h,w);
+  const sh=recent(h,Math.min(5,h.length));
+  const sp=sh.length?sh.filter(x=>isBig(x.sum)).length/sh.length:0.5;
+  const trend=0.5+Math.max(-0.25,Math.min(0.25,(sp-0.5)*0.8));
+  const lb=isBig(r[r.length-1].sum);
+  let cs=1; for(let i=r.length-2;i>=0;i--){ if(isBig(r[i].sum)===lb)cs++; else break; }
+  const streakSig=0.5+(lb?0.25:-0.25)*Math.min(cs/5,1);
+  let score=p*0.4+trend*0.3+streakSig*0.3;
+  if(cs>=A_REVERSAL_STREAK&&cs<6){ const adj=Math.min(0.03,0.01*(cs-A_REVERSAL_STREAK+1)); score+=lb?-adj:adj; }
+  score=Math.max(0,Math.min(1,score));
+  const rel=Math.min(r.length/w,1)*0.6+Math.min(Math.abs(p-0.5)*2,0.5)*0.4;
+  return{score,pBig:p,reliability:rel};
 }
-function score_sequence(seq, weight) {
-  if (seq.length < 20) return 0.5;
-  let hits = 0, total = 0;
-  for (let i = 10; i < seq.length; i++) {
-    const prev = seq.slice(0, i);
-    const p = p_big(prev, 10);
-    const short = recent(prev, Math.min(5, prev.length));
-    const sp = short.length ? short.filter(x => is_big(x.sum)).length / short.length : 0.5;
-    const trend = 0.5 + Math.max(-0.25, Math.min(0.25, (sp - 0.5) * 0.8));
-    const lb = is_big(prev[prev.length - 1].sum);
-    let cs = 1; for (let j = prev.length - 2; j >= 0; j--) { if (is_big(prev[j].sum) === lb) cs++; else break; }
-    const streak_sig = 0.5 + (lb ? 0.25 : -0.25) * Math.min(cs / 5.0, 1.0);
-    const [w1, w2, w3] = weight;
-    const raw = p * w1 + trend * w2 + streak_sig * w3;
-    const pred = raw >= 0.5 ? "大" : "小";
-    const actual = is_big(seq[i].sum) ? "大" : "小";
-    if (pred === actual) hits++; total++;
-  }
-  return total ? hits / total : 0.5;
-}
-function search_best_weight(hist) {
-  if (hist.length < 50) return DEFAULT_WEIGHT;
-  const candidates = generate_weight_candidates();
-  const cw = [];
-  for (const w1 of candidates) {
-    for (const w2 of candidates) {
-      const w3 = Math.round((1.0 - w1 - w2) * 100) / 100;
-      if (w3 >= 0.15 && w3 <= 0.75 && Math.abs(w1 + w2 + w3 - 1.0) <= 0.001) cw.push([w1, w2, w3]);
-    }
-  }
-  let best_s = -1, best_w = DEFAULT_WEIGHT;
-  for (const w of cw) {
-    const rate = score_sequence(hist, w);
-    const dist = Math.abs(w[0]-DEFAULT_WEIGHT[0])+Math.abs(w[1]-DEFAULT_WEIGHT[1])+Math.abs(w[2]-DEFAULT_WEIGHT[2]);
-    const score = rate - Math.min(dist, 1.0) * 0.05;
-    if (score > best_s) { best_s = score; best_w = w; }
-  }
-  const limited = best_w.map((v, i) => {
-    const lo = Math.max(0.15, DEFAULT_WEIGHT[i] - A_MAX_WEIGHT_DEVIATION);
-    const hi = Math.min(0.75, DEFAULT_WEIGHT[i] + A_MAX_WEIGHT_DEVIATION);
-    return Math.min(Math.max(v, lo), hi);
-  });
-  const tot = limited.reduce((a, b) => a + b, 0);
-  if (tot <= 0) return DEFAULT_WEIGHT;
-  return limited.map(x => Math.round((x / tot) * 10000) / 10000);
+function predictA(h){
+  const res={}; A_WINDOWS.forEach(w=>res[w]=modelAWindow(h,w));
+  let ws=0,tw=0; A_WINDOWS.forEach(w=>{ const eff=A_DEFAULT_WINDOW_WEIGHTS[w]*Math.max(res[w].reliability,A_RELIABILITY_FLOOR); ws+=eff*res[w].score; tw+=eff; });
+  const fs=tw>0?ws/tw:0.5;
+  return{prediction:fs>=0.5?"大":"小",weightedProbability:{"大":fs,"小":1-fs},type:judgeType(h),windows:res};
 }
 
-class ModelAState {
-  constructor() {
-    this.slot_states = {};
-    ["凌晨","早上","上午","中午","下午","傍晚","晚上"].forEach(s => {
-      this.slot_states[s] = { weight: [...DEFAULT_WEIGHT], last_update_period: 0 };
-    });
+function seedBacktest(h,seed){
+  if(h.length<50)return{error:1};
+  const hits=[];
+  for(let i=50;i<h.length;i++){
+    const g=getBPrediction(seed,{nbr:h[i-1].nbr,sum:h[i-1].sum,type:h[i-1].type});
+    hits.push(g.includes(h[i].type)?1:0);
   }
-  force_refresh() { Object.values(this.slot_states).forEach(s => s.last_update_period = 0); }
-  get_weight(slot, slot_hist) {
-    const state = this.slot_states[slot];
-    const n = slot_hist.length;
-    if (n >= 50 && (state.last_update_period === 0 || n - state.last_update_period >= WEIGHT_UPDATE_INTERVAL)) {
-      state.weight = search_best_weight(slot_hist);
-      state.last_update_period = n;
-    }
-    return state.weight;
+  const total=hits.length; if(!total)return{error:1};
+  const overall=hits.reduce((a,b)=>a+b,0)/total;
+  const r30=hits.slice(-30); const rr=r30.reduce((a,b)=>a+b,0)/r30.length;
+  const blocks=[]; for(let i=0;i<=total-10;i+=10){const b=hits.slice(i,i+10);blocks.push(b.reduce((a,c)=>a+c,0)/b.length);}
+  const mean=blocks.reduce((a,b)=>a+b,0)/blocks.length;
+  const variance=blocks.reduce((a,b)=>a+(b-mean)**2,0)/blocks.length;
+  const stability=Math.max(0,Math.min(1,1-Math.sqrt(variance)));
+  let c=0,m=0; hits.forEach(x=>{if(!x){c++;m=Math.max(m,c);}else c=0;});
+  const lossPen=Math.max(0,1-m/total);
+  const score=overall*0.4+rr*0.3+stability*0.2+lossPen*0.1;
+  return{overall,recentRate:rr,stability,score,hits};
+}
+function selectSeed(h){
+  if(h.length<50)return{error:1};
+  let bs=-1,bseed=null,bd=null;
+  for(let s=B_SEED_MIN;s<=B_SEED_MAX;s+=B_COARSE_STEP){
+    const d=seedBacktest(h,s); if(d.error)continue;
+    if(d.score>bs){bs=d.score;bseed=s;bd=d;}
   }
+  if(!bseed)return{error:1};
+  const ss=Math.max(B_SEED_MIN,bseed-9), es=Math.min(B_SEED_MAX,bseed+9);
+  for(let s=ss;s<=es;s++){ const d=seedBacktest(h,s); if(d.error)continue; if(d.score>bs){bs=d.score;bseed=s;bd=d;} }
+  return{bestSeed:bseed,score:bs,detail:bd};
+}
+function predictB(h){
+  const r=selectSeed(h); if(r.error)return{error:1};
+  const g=getBPrediction(r.bestSeed,h[h.length-1]);
+  let o=0,e=0; g.forEach(x=>x.endsWith("单")?o++:e++);
+  const total=o+e; const pOdd=total?o/total:0.5;
+  return{seed:r.bestSeed,pOdd,pEven:1-pOdd,prediction:pOdd>=0.5?"单":"双",groups:g,detail:r.detail};
 }
 
-function _a_reliability(h, w) {
-  const r = recent(h, w); const n = r.length;
-  if (n <= 1) return 0.0;
-  const p = p_big(h, w); const imb = Math.abs(p - 0.5);
-  const sf = Math.min(n / Math.max(w, 1), 1.0);
-  const sigf = 0.5 + Math.min(imb * 2.0, 0.5);
-  return 0.6 * sf + 0.4 * sigf;
+function comboScores(a,b){
+  const aBig=a.weightedProbability["大"]||0.5, aSmall=1-aBig;
+  const bOdd=b.pOdd||0.5, bEven=1-bOdd;
+  return{"大单":aBig*COMBO_ALPHA+bOdd*COMBO_BETA,"大双":aBig*COMBO_ALPHA+bEven*COMBO_BETA,"小单":aSmall*COMBO_ALPHA+bOdd*COMBO_BETA,"小双":aSmall*COMBO_ALPHA+bEven*COMBO_BETA};
 }
-function _a_reversal(h, w) {
-  const r = recent(h, w); if (r.length < A_REVERSAL_STREAK) return 0.0;
-  const lb = is_big(r[r.length-1].sum); let streak = 1;
-  for (let i = r.length-2; i >= 0; i--) { if (is_big(r[i].sum) === lb) streak++; else break; }
-  if (streak < A_REVERSAL_STREAK || streak >= 6) return 0.0;
-  const amt = Math.min(0.03, 0.01 * (streak - A_REVERSAL_STREAK + 1));
-  return lb ? -amt : amt;
-}
-function model_a_window(h, w, weight) {
-  const r = recent(h, w); if (!r.length) return { score: 0.5, p_big: 0.5, reliability: 0 };
-  const p = p_big(h, w);
-  const sh = recent(h, Math.min(5, h.length));
-  const sp = sh.length ? sh.filter(x => is_big(x.sum)).length / sh.length : 0.5;
-  const trend = 0.5 + Math.max(-0.25, Math.min(0.25, (sp - 0.5) * 0.8));
-  const lb = is_big(r[r.length-1].sum); let cs = 1;
-  for (let i = r.length-2; i >= 0; i--) { if (is_big(r[i].sum) === lb) cs++; else break; }
-  const streak_sig = 0.5 + (lb ? 0.25 : -0.25) * Math.min(cs / 5.0, 1.0);
-  const [w1, w2, w3] = weight;
-  let score = p * w1 + trend * w2 + streak_sig * w3;
-  const rev = _a_reversal(h, w); score = Math.max(0, Math.min(1, score + rev));
-  const rel = _a_reliability(h, w);
-  return { score, p_big: p, reliability: rel };
+function buildKill(a,b){
+  const sc=comboScores(a,b);
+  const ranked=Object.entries(sc).sort((x,y)=>y[1]-x[1]);
+  const killed=ranked[ranked.length-1][0];
+  return{scores:sc,killedGroup:killed,recommended:ranked.slice(0,-1).map(x=>x[0])};
 }
 
-function predict_a(history, current_time) {
-  const hour = current_time.getHours(), minute = current_time.getMinutes();
-  if (is_maintenance_time(hour, minute)) return { prediction: null, reason: "维护时段" };
-  const slot = get_time_slot(hour, minute);
-  const slot_hist = history.filter(h => h.hour != null && get_time_slot(h.hour, h.minute) === slot);
-  const state = new ModelAState();
-  const weight = state.get_weight(slot, slot_hist);
-  const results = {};
-  for (const w of A_WINDOWS) results[w] = model_a_window(history, w, weight);
-  let ws = 0, tw = 0; const ww = {};
-  for (const w of A_WINDOWS) {
-    const rel = results[w].reliability;
-    const eff = A_DEFAULT_WINDOW_WEIGHTS[w] * Math.max(rel, A_RELIABILITY_FLOOR);
-    ww[w] = eff; ws += eff * results[w].score; tw += eff;
-  }
-  const final_score = tw > 0 ? ws / tw : results[10].score;
-  return { prediction: final_score >= 0.5 ? "大" : "小", weighted_probability: { "大": final_score, "小": 1 - final_score }, type: judge_type(history) };
-}
+let historyData=[];
+let session={total:0,hitA:0,hitB:0,hitF:0,records:[]};
 
-// ============================================================
-// 模型B（完整两轮扫描）
-// ============================================================
-function seed_backtest(h, seed) {
-  if (h.length < 50) return { error: 1 };
-  const hits = [];
-  for (let i = 50; i < h.length; i++) {
-    const groups = get_prediction(seed, { nbr: h[i-1].nbr, sum: h[i-1].sum, type: h[i-1].type });
-    hits.push(groups.includes(h[i].type) ? 1 : 0);
-  }
-  const total = hits.length; if (!total) return { error: 1 };
-  const overall = hits.reduce((a, b) => a + b, 0) / total;
-  const r30 = hits.slice(-30); const rr = r30.reduce((a, b) => a + b, 0) / r30.length;
-  const r10 = hits.slice(-10); let ewma = r10[0] || 0.5;
-  for (let i = 1; i < r10.length; i++) ewma = B_RECENT_EWMA_ALPHA * r10[i] + (1 - B_RECENT_EWMA_ALPHA) * ewma;
-  const blocks = [];
-  for (let i = 0; i <= total - 10; i += 10) { const b = hits.slice(i, i + 10); blocks.push(b.reduce((a, c) => a + c, 0) / b.length); }
-  let stability = 0.5;
-  if (blocks.length >= 2) { const m = blocks.reduce((a, b) => a + b, 0) / blocks.length; const v = blocks.reduce((a, b) => a + (b - m) ** 2, 0) / blocks.length; stability = Math.max(0, Math.min(1, 1 - Math.sqrt(v))); }
-  const rb = blocks.slice(-3); let rbs = 0.5;
-  if (rb.length >= 2) { const m = rb.reduce((a, b) => a + b, 0) / rb.length; const v = rb.reduce((a, b) => a + (b - m) ** 2, 0) / rb.length; rbs = Math.max(0, Math.min(1, 1 - Math.sqrt(v))); }
-  stability = stability * 0.60 + rbs * 0.40;
-  let ml = 0, cl = 0; for (const x of hits) { if (!x) { cl++; ml = Math.max(ml, cl); } else cl = 0; }
-  const lp = Math.max(0, 1 - ml / total);
-  const [wo, wr, ws2, wl] = B_SCORE_WEIGHTS;
-  const score = overall * wo + rr * wr + stability * ws2 + lp * wl;
-  const gs = {}; ALL_TYPES.forEach(g => gs[g] = { hits: 0, total: 0, excluded: 0, opened: 0 });
-  for (let i = 50; i < h.length; i++) {
-    const groups = get_prediction(seed, { nbr: h[i-1].nbr, sum: h[i-1].sum, type: h[i-1].type });
-    groups.forEach(g => gs[g].total++);
-    if (groups.includes(h[i].type)) gs[h[i].type].hits++;
-    ALL_TYPES.forEach(g => { if (!groups.includes(g)) gs[g].excluded++; if (h[i].type === g) gs[g].opened++; });
-  }
-  const gp = {}, ge = {}, gc = {};
-  ALL_TYPES.forEach(g => {
-    const st = gs[g];
-    gp[g] = (st.hits + B_GROUP_SMOOTHING) / (st.total + 2 * B_GROUP_SMOOTHING);
-    gc[g] = Math.min(1, st.total / 20);
-    const owe = st.opened - st.hits;
-    ge[g] = st.excluded ? (owe + B_GROUP_SMOOTHING) / (st.excluded + 2 * B_GROUP_SMOOTHING) : 0.5;
-  });
-  return { overall, recent_rate: rr, recent_ewma: ewma, stability, score, hits, group_precision: gp, group_confidence: gc, group_excluded_risk: ge };
-}
+// ===== 只加这里：localStorage 存/读 session，每验证完一期立刻写 =====
+function saveSession(){ try{ localStorage.setItem("pc28_session", JSON.stringify(session)); }catch(e){} }
+function loadSession(){ try{ const raw=localStorage.getItem("pc28_session"); if(raw){ const s=JSON.parse(raw); session={total:s.total||0,hitA:s.hitA||0,hitB:s.hitB||0,hitF:s.hitF||0,records:s.records||[]}; } }catch(e){} }
+loadSession();
+// ===== 结束 =====
 
-function select_seed(h) {
-  if (h.length < 50) return { error: 1 };
-  const coarse = [];
-  for (let s = B_SEED_MIN; s <= B_SEED_MAX; s += B_COARSE_STEP) {
-    const d = seed_backtest(h, s); if (d.error) continue;
-    coarse.push([d.score, s, d]);
-  }
-  coarse.sort((a, b) => b[0] - a[0]);
-  const top = coarse.slice(0, Math.min(B_REFINE_TOP, coarse.length));
-  const refine_set = new Set();
-  for (const [, seed] of top) {
-    for (let s = Math.max(B_SEED_MIN, seed - (B_COARSE_STEP - 1)); s <= Math.min(B_SEED_MAX, seed + (B_COARSE_STEP - 1)); s++) refine_set.add(s);
-  }
-  const refine = [...refine_set].sort((a, b) => a - b);
-  const refined = [];
-  for (const s of refine) { const d = seed_backtest(h, s); if (d.error) continue; refined.push([d.score, s, d]); }
-  const merged = {};
-  for (const item of [...coarse, ...refined]) merged[item[1]] = item;
-  const ranked = Object.values(merged).sort((a, b) => b[0] - a[0]);
-  const pool = ranked.slice(0, Math.min(B_TOP_SEEDS, ranked.length));
-  const cand_key = (item) => {
-    const [, , d] = item;
-    const cons = 1.0 - Math.min(Math.abs(d.overall - d.recent_rate), 1.0);
-    const rb = d.recent_block_stability || 0.5;
-    const ewma = d.recent_ewma || 0.5;
-    return d.score * 0.50 + d.stability * 0.20 + rb * 0.10 + cons * 0.10 + ewma * B_EWMA_SECONDARY_WEIGHT;
-  };
-  pool.sort((a, b) => cand_key(b) - cand_key(a));
-  const final = pool.slice(0, Math.min(B_FINAL_SEEDS, pool.length));
-  if (!final.length) return { error: 1 };
-  const [bs, best_seed, bd] = final[0];
-  return { best_seed, score: bs, detail: bd, candidate_seeds: final.map(x => x[1]) };
-}
+function logMsg(m){ const l=document.getElementById("log"); const p=document.createElement("p"); p.textContent=`[${new Date().toLocaleTimeString()}] ${m}`; l.appendChild(p); l.scrollTop=l.scrollHeight; }
 
-function predict_b(h) {
-  const r = select_seed(h); if (r.error) return { error: 1 };
-  const groups = get_prediction(r.best_seed, h[h.length - 1]);
-  const gp = r.detail.group_precision || {}; const gc = r.detail.group_confidence || {}; const ge = r.detail.group_excluded_risk || {};
-  let odd_s = 0, even_s = 0; const gw = {};
-  for (const g of groups) {
-    const prec = gp[g] || 0.5, conf = gc[g] || 0, risk = ge[g] || 0.5;
-    const qual = 0.5 + 0.5 * prec;
-    const pen = B_EXCLUDED_PENALTY_WEIGHT * Math.max(0, risk - 0.5) * conf;
-    const w = Math.max(0.05, qual - pen); gw[g] = w;
-    if (g.endsWith("单")) odd_s += w; else even_s += w;
+function parseAPI(raw){
+  if(!raw||!raw.data||!Array.isArray(raw.data.list)) throw new Error("接口格式异常");
+  const out=[];
+  for(const it of raw.data.list){
+    const nbr=String(it.drawIssue).trim();
+    if(!nbr)continue;
+    const parts=String(it.drawCode).split(",").map(x=>parseInt(x.trim()));
+    if(parts.length!==3||parts.some(isNaN))continue;
+    const sum=parts.reduce((a,b)=>a+b,0);
+    const type=getType(sum);
+    out.push({nbr,date:it.drawTime?it.drawTime.substring(0,10):"",time:it.drawTime||"",number:`${parts[0]}+${parts[1]}+${parts[2]}`,num:sum,sum,type,combination:type});
   }
-  const total = odd_s + even_s; const p_odd = total ? odd_s / total : 0.5;
-  return { seed: r.best_seed, p_odd, p_even: 1 - p_odd, prediction: p_odd >= 0.5 ? "单" : "双", groups, group_weights: gw };
-}
-
-// ============================================================
-// 组合
-// ============================================================
-function combo_scores(a, b) {
-  const a_big = parseFloat(a.weighted_probability["大"] || 0.5);
-  const a_small = 1 - a_big;
-  const b_odd = parseFloat(b.p_odd || 0.5), b_even = 1 - b_odd;
-  return {
-    "大单": a_big * COMBO_ALPHA + b_odd * COMBO_BETA,
-    "大双": a_big * COMBO_ALPHA + b_even * COMBO_BETA,
-    "小单": a_small * COMBO_ALPHA + b_odd * COMBO_BETA,
-    "小双": a_small * COMBO_ALPHA + b_even * COMBO_BETA
-  };
-}
-function build_kill(a, b) {
-  const sc = combo_scores(a, b);
-  const ranked = Object.entries(sc).sort((x, y) => y[1] - x[1] || COMBO_TYPES.indexOf(x[0]) - COMBO_TYPES.indexOf(y[0]));
-  const killed = ranked[ranked.length - 1][0];
-  return { scores: sc, killed_group: killed, recommended: ranked.filter(([g]) => g !== killed).map(([g]) => g) };
-}
-
-// ============================================================
-// 数据解析 —— 原样保留，一行未改
-// ============================================================
-function parse_api(raw) {
-  if (!raw || raw.message !== "success" || !Array.isArray(raw.data)) throw new Error("接口格式异常");
-  const out = [];
-  for (const it of raw.data) {
-    const nbr = String(it.nbr).trim(); if (!nbr) continue;
-    let nums, sum;
-    if (typeof it.num !== "undefined" && it.num !== null && it.num !== "") {
-      sum = parseInt(it.num);
-      nums = [Math.floor(sum/100)%10, Math.floor(sum/10)%10, sum%10];
-    } else if (typeof it.number === "string" && it.number.includes("+")) {
-      const parts = it.number.split("+").map(x => parseInt(x.trim()));
-      if (parts.length === 3 && !parts.some(isNaN)) { nums = parts; sum = parts.reduce((a,b)=>a+b,0); }
-      else { sum = parseInt(it.number); nums = [Math.floor(sum/100)%10, Math.floor(sum/10)%10, sum%10]; }
-    } else {
-      sum = parseInt(it.number || it.num || it.sum);
-      if (isNaN(sum)) continue;
-      nums = [Math.floor(sum/100)%10, Math.floor(sum/10)%10, sum%10];
-    }
-    let hour = null, minute = null;
-    if (it.time) { const parts = String(it.time).substring(0,8).split(":"); if (parts.length >= 2) { hour = parseInt(parts[0]); minute = parseInt(parts[1]); } }
-    const type = get_type(sum);
-    out.push({ nbr, date: it.date, time: it.time, number: `${nums[0]}+${nums[1]}+${nums[2]}`, num: sum, sum, type, hour, minute });
-  }
-  out.sort((a, b) => parseInt(a.nbr) - parseInt(b.nbr));
+  out.sort((a,b)=>parseInt(a.nbr)-parseInt(b.nbr));
   return out.slice(-100);
 }
 
-// ============================================================
-// 会话状态 & 验证
-// ============================================================
-let historyData = [];
-let session = load_session() || { total: 0, hitA: 0, hitB: 0, hitF: 0, records: [] };
-
-function log_msg(m) {
-  const l = document.getElementById("log");
-  const p = document.createElement("p");
-  p.textContent = `[${new Date().toLocaleTimeString()}] ${m}`;
-  l.appendChild(p); l.scrollTop = l.scrollHeight;
-}
-
-function verify() {
-  if (!historyData.length) return;
-  const map = {}; historyData.forEach(h => map[parseInt(h.nbr)] = h);
-  session.records.forEach(rec => {
-    if (rec.status === "已验证") return;
-    const act = map[rec.target];
-    if (!act) return;
-    const aHit = rec.predA === null ? null : (rec.predA === get_size(act.sum) ? "命中" : "错误");
-    const bHit = rec.predB === null ? null : (rec.predB === get_parity(act.sum) ? "命中" : "错误");
-    let fHit = "错误";
-    if (rec.killed && ALL_TYPES.includes(rec.killed)) fHit = act.type !== rec.killed ? "命中" : "错误";
-    else if (rec.predA && rec.predB) fHit = (act.type[0] === rec.predA || act.type[1] === rec.predB) ? "命中" : "错误";
-    rec.status = "已验证"; rec.actual = act; rec.aRes = aHit; rec.bRes = bHit; rec.fRes = fHit;
-    session.total++;
-    if (aHit === "命中") session.hitA++;
-    if (bHit === "命中") session.hitB++;
-    if (fHit === "命中") session.hitF++;
+function verify(){
+  if(!historyData.length)return;
+  const map={}; historyData.forEach(h=>map[parseInt(h.nbr)]=h);
+  let changed=false;
+  session.records.forEach(rec=>{
+    if(rec.status==="已验证")return;
+    const act=map[rec.target];
+    if(!act)return;
+    const aHit=rec.predA===null?null:(rec.predA===act.type[0]?"命中":"错误");
+    const bHit=rec.predB===null?null:(rec.predB===act.type[1]?"命中":"错误");
+    let fHit="错误";
+    if(rec.killed&&ALL_TYPES.includes(rec.killed)) fHit=act.type!==rec.killed?"命中":"错误";
+    else if(rec.predA&&rec.predB) fHit=(act.type[0]===rec.predA||act.type[1]===rec.predB)?"命中":"错误";
+    rec.status="已验证"; rec.actual=act; rec.aRes=aHit; rec.bRes=bHit; rec.fRes=fHit;
+    session.total++; if(aHit==="命中")session.hitA++; if(bHit==="命中")session.hitB++; if(fHit==="命中")session.hitF++;
+    changed=true;
   });
-  session.records = session.records.slice(-100);
-  save_session(); // ← 改动1：验证完立即持久化
+  session.records=session.records.slice(-100);
+  if(changed) saveSession();
 }
 
-function update_ui() {
-  if (!historyData.length) return;
-  const latest = historyData[historyData.length - 1];
-  const target = String(parseInt(latest.nbr) + 1);
-  document.getElementById("target-period").textContent = target;
-  document.getElementById("prev-period").textContent = latest.nbr;
-  document.getElementById("prev-open").textContent = `${latest.number}=${latest.sum}(${latest.type})`;
+function updateUI(){
+  if(!historyData.length)return;
+  const latest=historyData[historyData.length-1];
+  const target=String(parseInt(latest.nbr)+1);
+  document.getElementById("target-period").textContent=target;
+  document.getElementById("prev-period").textContent=latest.nbr;
+  document.getElementById("prev-open").textContent=`${latest.number}=${latest.sum}(${latest.type})`;
 
-  const dt = new Date();
-  const resA = predict_a(historyData, dt);
-  document.getElementById("model-a").textContent = resA.prediction || "--";
+  const resA=predictA(historyData);
+  document.getElementById("model-a").textContent=resA.prediction;
+  document.getElementById("a-windows").textContent=A_WINDOWS.map(w=>`${w}窗:${resA.windows[w].score.toFixed(3)}`).join(" ");
+  document.getElementById("a-prob").textContent=`大 ${(resA.weightedProbability["大"]*100).toFixed(1)}% / 小 ${(resA.weightedProbability["小"]*100).toFixed(1)}%`;
+  document.getElementById("a-type").textContent=resA.type;
 
-  let resB = { p_odd: 0.5, prediction: "--" };
-  if (historyData.length >= 50) {
-    try { resB = predict_b(historyData); document.getElementById("model-b").textContent = resB.prediction; }
-    catch(e) { document.getElementById("model-b").textContent = "错误"; log_msg("B模型错误: " + e.message); }
-  } else document.getElementById("model-b").textContent = "数据不足";
+  let resB={pOdd:0.5,prediction:"--",seed:null,groups:[],detail:null};
+  if(historyData.length>=50){ try{ resB=predictB(historyData); document.getElementById("model-b").textContent=resB.prediction; }catch(e){ document.getElementById("model-b").textContent="错误"; } }
+  else document.getElementById("model-b").textContent="数据不足";
 
-  if (resA.prediction && resB.prediction !== "--") {
-    const kill = build_kill(resA, resB);
-    document.getElementById("combo-scores").textContent = Object.entries(kill.scores).map(([k,v]) => `${k}:${v.toFixed(3)}`).join(" | ");
-    document.getElementById("kill-group").textContent = `杀${kill.killed_group}`;
-    document.getElementById("buy-groups").textContent = kill.recommended.join(" ");
-    if (!session.records.find(r => r.target === parseInt(target))) {
-      session.records.push({ target: parseInt(target), predA: resA.prediction, predB: resB.prediction, killed: kill.killed_group, status: "待验证" });
+  if(resB.seed){ document.getElementById("b-seed").textContent=resB.seed; }
+  if(resB.detail){ document.getElementById("b-overall").textContent=(resB.detail.overall*100).toFixed(1)+"%"; document.getElementById("b-recent").textContent=(resB.detail.recentRate*100).toFixed(1)+"%"; }
+  document.getElementById("b-prob").textContent=`单 ${(resB.pOdd*100).toFixed(1)}% / 双 ${((1-resB.pOdd)*100).toFixed(1)}%`;
+  document.getElementById("b-groups").textContent=(resB.groups||[]).join(" ");
+
+  if(resA.prediction&&resB.prediction!=="--"){
+    const kill=buildKill(resA,resB);
+    document.getElementById("combo-scores").textContent=Object.entries(kill.scores).map(([k,v])=>`${k}:${v.toFixed(3)}`).join(" | ");
+    document.getElementById("kill-group").textContent=`杀${kill.killedGroup}`;
+    document.getElementById("buy-groups").textContent=kill.recommended.join(" ");
+    if(!session.records.find(r=>r.target===target)){
+      session.records.push({target:parseInt(target),predA:resA.prediction,predB:resB.prediction,killed:kill.killedGroup,status:"待验证"});
     }
   }
 
-  document.getElementById("stat-total").textContent = session.total;
-  const pct = x => session.total ? ((x / session.total) * 100).toFixed(1) + "%" : "0%";
-  document.getElementById("stat-a").textContent = `${session.hitA}/${session.total} (${pct(session.hitA)})`;
-  document.getElementById("stat-b").textContent = `${session.hitB}/${session.total} (${pct(session.hitB)})`;
-  document.getElementById("stat-final").textContent = `${session.hitF}/${session.total} (${pct(session.hitF)})`;
+  document.getElementById("stat-total").textContent=session.total;
+  const wrongA=session.total-session.hitA, wrongB=session.total-session.hitB, wrongF=session.total-session.hitF;
+  const pct=x=>session.total?((x/session.total)*100).toFixed(1)+"%":"0%";
+  document.getElementById("stat-a").textContent=`正确${session.hitA} 错误${wrongA} ${pct(session.hitA)}`;
+  document.getElementById("stat-b").textContent=`正确${session.hitB} 错误${wrongB} ${pct(session.hitB)}`;
+  document.getElementById("stat-final").textContent=`正确${session.hitF} 错误${wrongF} ${pct(session.hitF)}`;
 
-  const tb = document.getElementById("history-body"); tb.innerHTML = "";
-  historyData.slice(-30).reverse().forEach(h => {
-    const cls = `tag-${h.type === "大单" ? "big-odd" : h.type === "大双" ? "big-even" : h.type === "小单" ? "small-odd" : "small-even"}`;
-    const rec = session.records.find(r => r.target === parseInt(h.nbr));
+  const tb=document.getElementById("history-body"); tb.innerHTML="";
+  historyData.slice(-30).reverse().forEach(h=>{
+    const cls=`tag-${h.type==="大单"?"big-odd":h.type==="大双"?"big-even":h.type==="小单"?"small-odd":"small-even"}`;
+    const rec=session.records.find(r=>r.target===parseInt(h.nbr));
     let predText = "--";
     if (rec && rec.killed) predText = "杀" + rec.killed;
     else if (historyData.length >= 2) {
@@ -564,65 +323,42 @@ function update_ui() {
       if (idx > 0) {
         const prevSlice = historyData.slice(0, idx);
         try {
-          const pa = predict_a(prevSlice, new Date());
-          const pb = predict_b(prevSlice);
-          if (pa.prediction && pb.prediction !== "--") { const k = build_kill(pa, pb); predText = "杀" + k.killed_group; }
+          const pa = predictA(prevSlice);
+          const pb = predictB(prevSlice);
+          if (pa.prediction && pb.prediction !== "--") { const kill = buildKill(pa, pb); predText = "杀" + kill.killedGroup; }
         } catch(e) {}
       }
     }
-    let resTxt = '<span class="pending">待开</span>';
-    if (rec && rec.status === "已验证") resTxt = rec.fRes === "命中" ? '<span class="hit">✓</span>' : '<span class="miss">✗</span>';
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${h.nbr}</td><td>${h.number}</td><td><span class="tag ${cls}">${h.type}</span></td><td><span class="tag tag-pred">${predText}</span></td><td>${resTxt}</td>`;
+    let resTxt='<span class="pending">待开</span>';
+    if(rec&&rec.status==="已验证"){ resTxt=rec.fRes==="命中"?'<span class="hit">✓</span>':'<span class="miss">✗</span>'; }
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${h.nbr}</td><td>${h.number}</td><td>${h.sum}</td><td><span class="tag ${cls}">${h.type}</span></td><td><span class="tag tag-pred">${predText}</span></td><td>${resTxt}</td>`;
     tb.appendChild(tr);
   });
 }
 
-// ============================================================
-// 主轮询
-// ============================================================
-async function pull() {
-  try {
-    const resp = await fetch(API_URL, { mode: "cors", headers: { "Accept": "application/json" } });
-    if (!resp.ok) throw new Error("HTTP " + resp.status);
-    const json = await resp.json();
-    const parsed = parse_api(json);
-    if (!parsed.length) throw new Error("解析后无数据");
-    historyData = parsed;
-    save_cache(); // ← 改动2：拉到新数据后缓存
-    log_msg(`✅ 实拉 ${historyData.length} 期，最新期 ${historyData[historyData.length-1].nbr}`);
+async function pull(){
+  try{
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(),FETCH_TIMEOUT);
+    const resp=await fetch(API_URL,{mode:"cors",signal:ctrl.signal,headers:{"Accept":"application/json"}});
+    clearTimeout(timer);
+    if(!resp.ok)throw new Error("HTTP "+resp.status);
+    const json=await resp.json();
+    const parsed=parseAPI(json);
+    if(!parsed.length)throw new Error("解析后无数据");
+    historyData=parsed;
+    logMsg(`✅ 3658kj 实拉 ${historyData.length} 期，最新期 ${historyData[historyData.length-1].nbr}`);
     verify();
-    update_ui();
-  } catch(err) {
-    log_msg("❌ 请求失败：" + err.message);
+    updateUI();
+  }catch(err){
+    logMsg("❌ 请求失败："+err.message);
   }
 }
 
-// ============================================================
-// 页面可见性恢复 → 立即补拉（改动2 附带）
-// ============================================================
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) {
-    log_msg("👁 页面恢复，立即补拉数据");
-    pull();
-  }
-});
-
-// ============================================================
-// 启动：先恢复缓存 → 再拉新数据
-// ============================================================
-(function init() {
-  const cached = load_cache();
-  if (cached && cached.length) {
-    historyData = cached;
-    log_msg(`📦 恢复缓存 ${historyData.length} 期`);
-    verify();
-    update_ui();
-  }
-  log_msg("🚀 启动，接口 pc28.help/api/kj.json?nbr=100，轮询15s");
-  pull();
-  setInterval(pull, CHECK_INTERVAL);
-})();
+logMsg("🚀 启动，接口 api.3658kj.com lotCode=10029");
+pull();
+setInterval(pull, CHECK_INTERVAL);
 </script>
 </body>
 </html>
