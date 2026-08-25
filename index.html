@@ -227,11 +227,9 @@ function buildKill(a,b){
 let historyData=[];
 let session={total:0,hitA:0,hitB:0,hitF:0,records:[]};
 
-// ===== 只加这里：localStorage 存/读 session，每验证完一期立刻写 =====
 function saveSession(){ try{ localStorage.setItem("pc28_session", JSON.stringify(session)); }catch(e){} }
 function loadSession(){ try{ const raw=localStorage.getItem("pc28_session"); if(raw){ const s=JSON.parse(raw); session={total:s.total||0,hitA:s.hitA||0,hitB:s.hitB||0,hitF:s.hitF||0,records:s.records||[]}; } }catch(e){} }
 loadSession();
-// ===== 结束 =====
 
 function logMsg(m){ const l=document.getElementById("log"); const p=document.createElement("p"); p.textContent=`[${new Date().toLocaleTimeString()}] ${m}`; l.appendChild(p); l.scrollTop=l.scrollHeight; }
 
@@ -259,13 +257,17 @@ function verify(){
     if(rec.status==="已验证")return;
     const act=map[rec.target];
     if(!act)return;
-    const aHit=rec.predA===null?null:(rec.predA===act.type[0]?"命中":"错误");
-    const bHit=rec.predB===null?null:(rec.predB===act.type[1]?"命中":"错误");
+    const aHit=rec.predA===null||rec.predA===undefined?null:(rec.predA===act.type[0]?"命中":"错误");
+    const bHit=rec.predB===null||rec.predB===undefined?null:(rec.predB===act.type[1]?"命中":"错误");
     let fHit="错误";
     if(rec.killed&&ALL_TYPES.includes(rec.killed)) fHit=act.type!==rec.killed?"命中":"错误";
     else if(rec.predA&&rec.predB) fHit=(act.type[0]===rec.predA||act.type[1]===rec.predB)?"命中":"错误";
     rec.status="已验证"; rec.actual=act; rec.aRes=aHit; rec.bRes=bHit; rec.fRes=fHit;
-    session.total++; if(aHit==="命中")session.hitA++; if(bHit==="命中")session.hitB++; if(fHit==="命中")session.hitF++;
+    session.total++;
+    if(aHit==="命中")session.hitA++;
+    else if(aHit==="错误")session.hitA=session.hitA; // 不重复+1，用下面统一计数
+    if(bHit==="命中")session.hitB++;
+    if(fHit==="命中")session.hitF++;
     changed=true;
   });
   session.records=session.records.slice(-100);
