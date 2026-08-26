@@ -9,33 +9,13 @@
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #2c3e50; padding: 10px; font-size: 13px; line-height: 1.6; min-height: 100vh; }
 h1 { text-align: center; font-size: 16px; color: #fff; margin-bottom: 10px; text-shadow: 0 1px 4px rgba(0,0,0,0.3); }
 h2 { font-size: 14px; color: #c0392b; margin: 6px 0 4px; border-bottom: 1px solid rgba(221,227,236,0.6); padding-bottom: 3px; }
-
-/* 毛玻璃外层 */
-.glass-wrap {
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 14px;
-  padding: 10px;
-  margin-bottom: 10px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
-}
-
-/* 双列网格 */
-.grid2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
+.glass-wrap { background: rgba(255, 255, 255, 0.18); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 14px; padding: 10px; margin-bottom: 10px; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .panel { background: rgba(255,255,255,0.92); border: 1px solid #dde3ec; border-radius: 8px; padding: 8px 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
 .panel-full { grid-column: 1 / -1; background: rgba(255,255,255,0.92); border: 1px solid #dde3ec; border-radius: 8px; padding: 8px 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-
 .row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }
 .row span { color: #5a6f8a; }
 .row strong { color: #1a1a1a; word-break: break-all; text-align: right; }
-
 .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; color: #fff; }
 .tag-big-odd { background: #c0392b; }
 .tag-big-even { background: #2980b9; }
@@ -45,22 +25,17 @@ h2 { font-size: 14px; color: #c0392b; margin: 6px 0 4px; border-bottom: 1px soli
 .tag-buy { background: #27ae60; }
 .tag-pred { background: #e67e22; }
 .tag-nopred { background: #95a5a6; }
-
-/* 窗口得分小方框 */
 .win-box { display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 .win-item { border: 1px solid #dde3ec; border-radius: 4px; padding: 1px 6px; background: #f8f9fb; font-size: 11px; color: #2c3e50; font-weight: bold; min-width: 52px; text-align: center; }
-
 table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; }
 th, td { padding: 4px 6px; text-align: center; border: 1px solid #dde3ec; }
 th { background: #eef2f7; color: #1a3a5c; }
 .hit { color: #27ae60; font-weight: bold; }
 .miss { color: #e74c3c; font-weight: bold; }
 .pending { color: #f39c12; }
-
 .btn-reset { display: block; width: 100%; padding: 12px; margin-top: 8px; background: #e74c3c; color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 0.15s; }
 .btn-reset:active { background: #a93226; }
 .btn-reset.done { background: #27ae60; }
-
 #log { max-height: 140px; overflow-y: auto; background: rgba(255,255,255,0.92); padding: 8px; border-radius: 8px; font-size: 11px; color: #5a6f8a; margin-top: 10px; border: 1px solid #dde3ec; }
 #log p { margin-bottom: 2px; }
 </style>
@@ -70,18 +45,17 @@ th { background: #eef2f7; color: #1a3a5c; }
 <h1>🎯 加拿大28 · 双模型预测系统 v13.5</h1>
 
 <div class="glass-wrap">
-  <!-- 第一行：接口配置 | 模型计算 -->
   <div class="grid2">
     <div class="panel">
       <h2>🔗 接口配置(3658kj)</h2>
       <div class="row"><span>API_URL:</span><strong>https://api.3658kj.com/api/v1/trend/getHistoryList?lotCode=10029&amp;pageSize=100&amp;pageNum=0</strong></div>
       <div class="row"><span>方法:</span><strong>GET</strong></div>
       <div class="row"><span>轮询:</span><strong>10s</strong></div>
-      <div class="row"><span>解析:</span><strong>drawCode:"a,b,c"→三码→和值；drawIssue=期号；drawTime=开奖时间</strong></div>
+      <div class="row"><span>解析:</span><strong>result.pc28_total优先→drawCode三码兜底</strong></div>
     </div>
 
     <div class="panel">
-      <h2>🧮 模型计算方式（实时展开）</h2>
+      <h2>🧮 模型计算方式(实时展开)</h2>
       <div class="row"><span>模型A 各窗口得分:</span><strong id="a-windows"><span class="win-box"><span class="win-item">10窗:--</span><span class="win-item">20窗:--</span><span class="win-item">30窗:--</span><span class="win-item">50窗:--</span><span class="win-item">100窗:--</span></span></strong></div>
       <div class="row"><span>模型A 加权概率:</span><strong id="a-prob">大 0% / 小 0%</strong></div>
       <div class="row"><span>模型A 走势判定:</span><strong id="a-type">--</strong></div>
@@ -92,7 +66,6 @@ th { background: #eef2f7; color: #1a3a5c; }
       <div class="row"><span>模型B 推三组:</span><strong id="b-groups">--</strong></div>
     </div>
 
-    <!-- 第二行：当前预测 | 回测统计 -->
     <div class="panel">
       <h2>📊 当前预测</h2>
       <div class="row"><span>目标期:</span><strong id="target-period">--</strong></div>
@@ -116,7 +89,6 @@ th { background: #eef2f7; color: #1a3a5c; }
   </div>
 </div>
 
-<!-- 第三行：最近30期（全宽，独立毛玻璃框） -->
 <div class="glass-wrap">
   <div class="panel-full">
     <h2>📋 最近30期</h2>
@@ -275,21 +247,35 @@ loadSession();
 
 function logMsg(m){ const l=document.getElementById("log"); const p=document.createElement("p"); p.textContent=`[${new Date().toLocaleTimeString()}] ${m}`; l.appendChild(p); l.scrollTop=l.scrollHeight; }
 
+/* ===== 唯一改动：parseAPI 数据对接方式 ===== */
 function parseAPI(raw){
   if(!raw||!raw.data||!Array.isArray(raw.data.list)) throw new Error("接口格式异常");
   const out=[];
   for(const it of raw.data.list){
     const nbr=String(it.drawIssue).trim();
     if(!nbr)continue;
-    const parts=String(it.drawCode).split(",").map(x=>parseInt(x.trim()));
-    if(parts.length!==3||parts.some(isNaN))continue;
-    const sum=parts.reduce((a,b)=>a+b,0);
+
+    let sum=null;
+    // 优先用 result.pc28_total(接口直出和值)
+    if(it.result && it.result.pc28_total !== undefined && it.result.pc28_total !== null && it.result.pc28_total !== ""){
+      sum = parseInt(it.result.pc28_total);
+    }
+    // 兜底：从 drawCode 三码相加
+    if(isNaN(sum)){
+      const parts=String(it.drawCode).split(",").map(x=>parseInt(x.trim()));
+      if(parts.length!==3||parts.some(isNaN))continue;
+      sum = parts.reduce((a,b)=>a+b,0);
+    }
+    if(isNaN(sum))continue;
+
     const type=getType(sum);
-    out.push({nbr,date:it.drawTime?it.drawTime.substring(0,10):"",time:it.drawTime||"",number:`${parts[0]}+${parts[1]}+${parts[2]}`,num:sum,sum,type,combination:type});
+    const number = it.drawCode ? String(it.drawCode).replace(/,/g,"+") : String(sum);
+    out.push({nbr,date:it.drawTime?it.drawTime.substring(0,10):"",time:it.drawTime||"",number,num:sum,sum,type,combination:type});
   }
   out.sort((a,b)=>parseInt(a.nbr)-parseInt(b.nbr));
   return out.slice(-100);
 }
+/* ===== 改动结束 ===== */
 
 function resetStats(){
   session.aCorrect=0; session.aWrong=0;
@@ -297,40 +283,23 @@ function resetStats(){
   session.fCorrect=0; session.fWrong=0;
   saveSession();
   updateUI();
-  logMsg("🗑 统计已清零（仅清计数，预测答案永久保留）");
-
+  logMsg("🗑 统计已清零(仅清计数，预测答案永久保留)");
   const btn = document.getElementById("btn-reset");
   btn.textContent = "✅ 已清零！";
   btn.classList.add("done");
-  setTimeout(()=>{
-    btn.textContent = "🗑 清零统计";
-    btn.classList.remove("done");
-  }, 1500);
+  setTimeout(()=>{ btn.textContent = "🗑 清零统计"; btn.classList.remove("done"); }, 1500);
 }
 
 function verifyOne(){
   if(!historyData.length)return false;
   const map={}; historyData.forEach(h=>map[parseInt(h.nbr)]=h);
-
   const pendingIdx = session.records.findIndex(r=>r.status==="待验证" && map[r.target]);
   if(pendingIdx === -1) return false;
-
   const rec = session.records[pendingIdx];
   const act = map[rec.target];
-
-  if(rec.predA){
-    if(act.type[0]===rec.predA) session.aCorrect++;
-    else session.aWrong++;
-  }
-  if(rec.predB){
-    if(act.type[1]===rec.predB) session.bCorrect++;
-    else session.bWrong++;
-  }
-  if(rec.killed){
-    if(act.type!==rec.killed) session.fCorrect++;
-    else session.fWrong++;
-  }
-
+  if(rec.predA){ if(act.type[0]===rec.predA) session.aCorrect++; else session.aWrong++; }
+  if(rec.predB){ if(act.type[1]===rec.predB) session.bCorrect++; else session.bWrong++; }
+  if(rec.killed){ if(act.type!==rec.killed) session.fCorrect++; else session.fWrong++; }
   rec.status="已验证";
   saveSession();
   return true;
@@ -343,7 +312,7 @@ function checkAutoReset(){
     session.bCorrect=0; session.bWrong=0;
     session.fCorrect=0; session.fWrong=0;
     saveSession();
-    logMsg("🔄 已验证达100期，回测统计自动清零（仅清计数，预测答案永久保留）");
+    logMsg("🔄 已验证达100期，回测统计自动清零");
     return true;
   }
   return false;
@@ -384,7 +353,6 @@ function updateUI(){
 
   const verifiedCount = session.aCorrect + session.aWrong;
   document.getElementById("stat-total").textContent = verifiedCount;
-
   const pct=(c,w)=>(c+w)>0?((c/(c+w))*100).toFixed(1)+"%":"0%";
   document.getElementById("stat-a").textContent=`正确${session.aCorrect}/错误${session.aWrong}/${pct(session.aCorrect,session.aWrong)}`;
   document.getElementById("stat-b").textContent=`正确${session.bCorrect}/错误${session.bWrong}/${pct(session.bCorrect,session.bWrong)}`;
@@ -394,41 +362,20 @@ function updateUI(){
   historyData.slice(-30).reverse().forEach(h=>{
     const cls=`tag-${h.type==="大单"?"big-odd":h.type==="大双"?"big-even":h.type==="小单"?"small-odd":"small-even"}`;
     const rec=session.records.find(r=>r.target===parseInt(h.nbr));
-
-    let predText = "未预测";
-    let predTagClass = "tag-nopred";
+    let predText = "未预测", predTagClass = "tag-nopred";
     if(rec){
-      if(rec.killed){
-        predText = "杀" + rec.killed;
-        predTagClass = "tag-pred";
-      } else if(rec.predA && rec.predB){
-        predText = rec.predA + "/" + rec.predB;
-        predTagClass = "tag-pred";
-      }
+      if(rec.killed){ predText = "杀" + rec.killed; predTagClass = "tag-pred"; }
+      else if(rec.predA && rec.predB){ predText = rec.predA + "/" + rec.predB; predTagClass = "tag-pred"; }
     }
-
     let aCell='<span class="pending">-</span>', bCell='<span class="pending">-</span>', fCell='<span class="pending">-</span>';
     if(rec){
-      if(rec.status==="待验证"){
-        aCell='<span class="pending">待开</span>';
-        bCell='<span class="pending">待开</span>';
-        fCell='<span class="pending">待开</span>';
-      }else if(rec.status==="已验证"){
-        if(rec.predA){
-          if(h.type[0]===rec.predA) aCell='<span class="hit">✓</span>';
-          else aCell='<span class="miss">✗</span>';
-        }
-        if(rec.predB){
-          if(h.type[1]===rec.predB) bCell='<span class="hit">✓</span>';
-          else bCell='<span class="miss">✗</span>';
-        }
-        if(rec.killed){
-          if(h.type!==rec.killed) fCell='<span class="hit">✓</span>';
-          else fCell='<span class="miss">✗</span>';
-        }
+      if(rec.status==="待验证"){ aCell=bCell=fCell='<span class="pending">待开</span>'; }
+      else if(rec.status==="已验证"){
+        if(rec.predA){ if(h.type[0]===rec.predA) aCell='<span class="hit">✓</span>'; else aCell='<span class="miss">✗</span>'; }
+        if(rec.predB){ if(h.type[1]===rec.predB) bCell='<span class="hit">✓</span>'; else bCell='<span class="miss">✗</span>'; }
+        if(rec.killed){ if(h.type!==rec.killed) fCell='<span class="hit">✓</span>'; else fCell='<span class="miss">✗</span>'; }
       }
     }
-
     const tr=document.createElement("tr");
     tr.innerHTML=`<td>${h.nbr}</td><td>${h.number}</td><td>${h.sum}</td><td><span class="tag ${cls}">${h.type}</span></td><td><span class="tag ${predTagClass}">${predText}</span></td><td>${aCell}</td><td>${bCell}</td><td>${fCell}</td>`;
     tb.appendChild(tr);
@@ -447,10 +394,8 @@ async function pull(){
     if(!parsed.length)throw new Error("解析后无数据");
     historyData=parsed;
     logMsg(`✅ 3658kj 实拉 ${historyData.length} 期，最新期 ${historyData[historyData.length-1].nbr}`);
-
     while(verifyOne()){}
     if(checkAutoReset()){ updateUI(); }
-
     updateUI();
   }catch(err){
     logMsg("❌ 请求失败："+err.message);
@@ -466,7 +411,7 @@ document.addEventListener("visibilitychange", () => {
 
 document.getElementById("btn-reset").addEventListener("click", resetStats);
 
-logMsg("🚀 启动 v13.5，毛玻璃双列布局，窗口得分方框，已验证=aCorrect+aWrong");
+logMsg("🚀 启动 v13.5，数据对接：result.pc28_total优先→drawCode兜底");
 pull();
 setInterval(pull, CHECK_INTERVAL);
 </script>
