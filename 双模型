@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>PC28 预测 v14.0 — SW 后台版</title>
+<style>
+:root{
+  --bg1:#667eea;--bg2:#764ba2;
+  --glass:rgba(255,255,255,0.18);
+  --panel:rgba(255,255,255,0.92);
+  --shadow:0 8px 32px rgba(0,0,0,.25);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:linear-gradient(135deg,var(--bg1),var(--bg2));
+  min-height:100vh;
+  padding:10px;
+  color:#333;
+  -webkit-font-smoothing:antialiased;
+}
+h1{
+  text-align:center;font-size:1.25rem;font-weight:700;
+  color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.35);
+  margin:0;padding:8px 0;
+}
+.glass-wrap{
+  background:var(--glass);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.28);
+  padding:10px;
+  margin-bottom:10px;
+  box-shadow:var(--shadow);
+}
+.grid2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.panel{
+  background:var(--panel);
+  border-radius:10px;
+  padding:10px;
+  box-shadow:0 2px 10px rgba(0,0,0,.12);
+  border:none;
+  border-bottom:1px solid rgba(0,0,0,.06);
+  margin-bottom:0;
+}
+.panel h2{font-size:.85rem;margin-bottom:6px;color:#555;font-weight:600}
+.panel h2 .sw-dot{
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  margin-right:4px;vertical-align:middle;
+}
+.sw-on{background:#34c759;box-shadow:0 0 4px #34c759}
+.sw-off{background:#ff3b30;box-shadow:0 0 4px #ff3b30}
+.sw-wait{background:#ff9500;box-shadow:0 0 4px #ff9500}
+.row{display:flex;justify-content:space-between;align-items:center;font-size:.78rem;padding:2px 0}
+.row .lb{color:#888}
+.row .val{font-weight:600;color:#222}
+.win-box{display:flex;gap:3px;flex-wrap:wrap}
+.win-item{
+  border:1px solid #d0d0d0;border-radius:4px;
+  padding:1px 5px;font-size:.7rem;font-weight:700;min-width:22px;text-align:center;
+  background:#f8f8f8;
+}
+.win-item.w5{color:#e74c3c}
+.win-item.w4{color:#e67e22}
+.win-item.w3{color:#b8860b}
+.win-item.w2{color:#27ae60}
+.win-item.w1{color:#3498db}
+.win-item.w0{color:#95a5a6}
+table{width:100%;border-collapse:collapse;font-size:.72rem;margin-top:4px}
+th{background:#f0f0f0;padding:4px 2px;font-weight:600}
+td{padding:3px 2px;text-align:center;border-bottom:1px solid #f0f0f0}
+.tag-pred{background:#e8f4fd;color:#2980b9;border:1px solid #bee5eb;padding:1px 4px;border-radius:3px}
+.tag-kill{background:#fde8e8;color:#c0392b;border:1px solid #f5c6cb;padding:1px 4px;border-radius:3px}
+.tag-none{background:#f0f0f0;color:#aaa;padding:1px 4px;border-radius:3px}
+.tag-y{color:#27ae60;font-weight:700}
+.tag-n{color:#e74c3c;font-weight:700}
+.tag-dash{color:#bbb}
+#log{
+  background:rgba(0,0,0,.72);color:#0f0;
+  border-radius:10px;padding:8px;font-size:.68rem;
+  max-height:120px;overflow-y:auto;
+  font-family:"Courier New",monospace;
+  border-top:1px solid rgba(255,255,255,.15);
+}
+#log div{padding:1px 0}
+.btn-reset{
+  width:100%;padding:8px;border:none;border-radius:8px;
+  background:linear-gradient(135deg,#ff6b6b,#ee5a24);color:#fff;
+  font-size:.82rem;font-weight:700;cursor:pointer;
+  box-shadow:0 2px 8px rgba(238,90,36,.35);
+  transition:all .25s;
+  margin-top:6px;
+}
+.btn-reset:active{transform:scale(.97)}
+.btn-reset.cleared{background:linear-gradient(135deg,#2ecc71,#27ae60)}
+@media(max-width:420px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<h1>🎯 PC28 智能预测系统</h1>
+
+<div class="glass-wrap">
+  <div class="grid2">
+    <div class="panel" id="panel-config">
+      <h2><span class="sw-dot sw-wait" id="swDot"></span>接口配置</h2>
+      <div class="row"><span class="lb">数据源</span><span class="val">api.3658kj.com</span></div>
+      <div class="row"><span class="lb">轮询间隔</span><span class="val">10s</span></div>
+      <div class="row"><span class="lb">SW 状态</span><span class="val" id="swStatus">注册中…</span></div>
+      <div class="row"><span class="lb">最新期号</span><span class="val" id="latestIssue">--</span></div>
+      <div class="row"><span class="lb">最新和值</span><span class="val" id="latestSum">--</span></div>
+    </div>
+    <div class="panel" id="panel-model">
+      <h2>🧮 模型计算方式</h2>
+      <div class="row"><span class="lb">模型A</span><span class="val">五窗口加权+走势</span></div>
+      <div class="row"><span class="lb">模型B</span><span class="val">最优seed+命中率</span></div>
+      <div class="row"><span class="lb">组合</span><span class="val">四组合评分+杀组</span></div>
+      <div class="row"><span class="lb">A窗口得分</span><span class="win-box" id="a-windows"><span class="win-item w0">-</span></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="glass-wrap">
+  <div class="grid2">
+    <div class="panel">
+      <h2>🔮 当前预测（下一期）</h2>
+      <div class="row"><span class="lb">目标期号</span><span class="val" id="targetIssue">--</span></div>
+      <div class="row"><span class="lb">模型A预测</span><span class="val" id="predA">--</span></div>
+      <div class="row"><span class="lb">模型B预测</span><span class="val" id="predB">--</span></div>
+      <div class="row"><span class="lb">杀组</span><span class="val" id="killGroup">--</span></div>
+      <div class="row"><span class="lb">组合建议</span><span class="val" id="comboAdv">--</span></div>
+    </div>
+    <div class="panel">
+      <h2>📊 回测统计（近100期）</h2>
+      <div class="row"><span class="lb">已验证</span><span class="val" id="verifiedCount">0</span></div>
+      <div class="row"><span class="lb">模型A</span><span class="val" id="statA">0/0 (0%)</span></div>
+      <div class="row"><span class="lb">模型B</span><span class="val" id="statB">0/0 (0%)</span></div>
+      <div class="row"><span class="lb">组合</span><span class="val" id="statC">0/0 (0%)</span></div>
+      <button class="btn-reset" id="btnReset" onclick="resetStats()">🗑 清零统计</button>
+    </div>
+  </div>
+</div>
+
+<div class="glass-wrap">
+  <div class="panel" style="margin-bottom:0">
+    <h2>📋 最近30期</h2>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>期号</th><th>开奖结果</th><th>和值</th><th>类型</th><th>预测答案</th><th>A</th><th>B</th><th>组合</th></tr></thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<div id="log"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function logMsg(msg){
+  const d = new Date();
+  const ts = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+  const el = $("log");
+  el.innerHTML += `<div>[${ts}] ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+navigator.serviceWorker.addEventListener("message", e => {
+  const d = e.data;
+  if(!d || !d.type) return;
+  switch(d.type){
+    case "sw_ready":
+      $("swDot").className = "sw-dot sw-on";
+      $("swStatus").textContent = "已连接";
+      logMsg("✅ SW 已连接，后台预测已激活");
+      break;
+    case "tick":
+      renderLatest(d.latest);
+      renderPrediction(d.prediction);
+      renderStats(d.stats);
+      renderHistory(d.history, d.records);
+      renderWindows(d.aWindows);
+      break;
+    case "verified":
+      logMsg(`✅ 验证期 ${d.target}：实际和值${d.actual}，${d.aHit?'A✓':'A✗'} ${d.bHit?'B✓':'B✗'} ${d.cHit?'组合✓':'组合✗'}`);
+      break;
+    case "auto_reset":
+      logMsg("🔄 已验证达100期，自动清零统计");
+      flashResetBtn();
+      break;
+    case "sw_error":
+      logMsg(`❌ SW错误：${d.msg}`);
+      break;
+  }
+});
+
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js").then(reg => {
+    logMsg("📡 SW 注册成功，等待激活…");
+    if(reg.active){
+      reg.active.postMessage({type:"get_state"});
+    }
+  }).catch(err => {
+    $("swDot").className = "sw-dot sw-off";
+    $("swStatus").textContent = "不支持（已降级）";
+    logMsg("❌ SW 注册失败：" + err.message + "，降级为前台轮询");
+    fallbackPoll();
+  });
+}else{
+  $("swDot").className = "sw-dot sw-off";
+  $("swStatus").textContent = "不支持（已降级）";
+  logMsg("⚠️ 浏览器不支持 SW，使用前台轮询");
+  fallbackPoll();
+}
+
+let fallbackTimer = null;
+function fallbackPoll(){
+  if(fallbackTimer) return;
+  logMsg("🔄 启动前台轮询（10s）");
+  fallbackTimer = setInterval(async () => {
+    try{
+      const r = await fetch("https://api.3658kj.com/api/v1/trend/getHistoryList?lotCode=10029&pageSize=100&pageNum=0", {cache:"no-store"});
+      const raw = await r.json();
+      if(raw.code===0) logMsg("📥 前台拉取成功（后台模式不可用）");
+    }catch(e){}
+  }, 10000);
+}
+
+function renderLatest(d){
+  if(!d) return;
+  $("latestIssue").textContent = d.issue || "--";
+  $("latestSum").textContent = d.sum != null ? d.sum : "--";
+}
+function renderPrediction(p){
+  if(!p) return;
+  $("targetIssue").textContent = p.target || "--";
+  $("predA").textContent = p.predA || "--";
+  $("predB").textContent = p.predB || "--";
+  $("killGroup").textContent = p.killGroup || "--";
+  $("comboAdv").textContent = p.comboAdv || "--";
+}
+function renderStats(s){
+  if(!s) return;
+  $("verifiedCount").textContent = s.verified || 0;
+  $("statA").textContent = `${s.aCorrect||0}/${s.aVerified||0} (${s.aRate||0}%)`;
+  $("statB").textContent = `${s.bCorrect||0}/${s.bVerified||0} (${s.bRate||0}%)`;
+  $("statC").textContent = `${s.cCorrect||0}/${s.cVerified||0} (${s.cRate||0}%)`;
+}
+function renderHistory(history, records){
+  if(!history) return;
+  const tbody = $("historyBody");
+  tbody.innerHTML = "";
+  const recMap = {};
+  (records||[]).forEach(r => { recMap[r.target] = r; });
+  history.slice(0,30).forEach(row => {
+    const rec = recMap[row.issue];
+    let predHTML = '<span class="tag-none">未预测</span>';
+    let aCell = '<span class="tag-dash">-</span>';
+    let bCell = '<span class="tag-dash">-</span>';
+    let cCell = '<span class="tag-dash">-</span>';
+    if(rec){
+      if(rec.killed){
+        predHTML = `<span class="tag-kill">杀${rec.killed}</span>`;
+      } else if(rec.predA || rec.predB){
+        predHTML = `<span class="tag-pred">${rec.predA||""}/${rec.predB||""}</span>`;
+      }
+      if(rec.status === "已验证"){
+        aCell = rec.aHit ? '<span class="tag-y">✓</span>' : '<span class="tag-n">✗</span>';
+        bCell = rec.bHit ? '<span class="tag-y">✓</span>' : '<span class="tag-n">✗</span>';
+        cCell = rec.cHit ? '<span class="tag-y">✓</span>' : '<span class="tag-n">✗</span>';
+      }
+    }
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${row.issue}</td><td>${row.code||"--"}</td><td>${row.sum}</td><td>${row.type||"--"}</td><td>${predHTML}</td><td>${aCell}</td><td>${bCell}</td><td>${cCell}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+function renderWindows(w){
+  if(!w) return;
+  const box = $("a-windows");
+  box.innerHTML = "";
+  w.forEach(score => {
+    const span = document.createElement("span");
+    span.className = `win-item w${Math.min(5, Math.max(0, score))}`;
+    span.textContent = score;
+    box.appendChild(span);
+  });
+}
+function resetStats(){
+  if(!navigator.serviceWorker.controller) return;
+  navigator.serviceWorker.controller.postMessage({type:"reset_stats"});
+  flashResetBtn();
+  logMsg("🗑 手动清零统计");
+}
+function flashResetBtn(){
+  const btn = $("btnReset");
+  btn.textContent = "✅ 已清零";
+  btn.classList.add("cleared");
+  setTimeout(() => { btn.textContent = "🗑 清零统计"; btn.classList.remove("cleared"); }, 1500);
+}
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible" && navigator.serviceWorker.controller){
+    navigator.serviceWorker.controller.postMessage({type:"get_state"});
+    logMsg("👁 切回前台，同步最新数据");
+  }
+});
+
+logMsg("🚀 页面加载完成，初始化中…");
+</script>
+</body>
+</html>
