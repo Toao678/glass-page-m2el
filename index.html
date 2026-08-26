@@ -6,13 +6,36 @@
 <title>PC28 预测系统 v13.5</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: #f5f6fa; color: #2c3e50; padding: 12px; font-size: 13px; line-height: 1.6; padding-bottom: 60px; }
-h1 { text-align: center; font-size: 16px; color: #1a3a5c; margin-bottom: 8px; }
-h2 { font-size: 14px; color: #c0392b; margin: 10px 0 6px; border-bottom: 1px solid #dde3ec; padding-bottom: 4px; }
-.panel { background: #ffffff; border: 1px solid #dde3ec; border-radius: 8px; padding: 10px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #2c3e50; padding: 10px; font-size: 13px; line-height: 1.6; min-height: 100vh; }
+h1 { text-align: center; font-size: 16px; color: #fff; margin-bottom: 10px; text-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+h2 { font-size: 14px; color: #c0392b; margin: 6px 0 4px; border-bottom: 1px solid rgba(221,227,236,0.6); padding-bottom: 3px; }
+
+/* 毛玻璃外层 */
+.glass-wrap {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 14px;
+  padding: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+}
+
+/* 双列网格 */
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.panel { background: rgba(255,255,255,0.92); border: 1px solid #dde3ec; border-radius: 8px; padding: 8px 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.panel-full { grid-column: 1 / -1; background: rgba(255,255,255,0.92); border: 1px solid #dde3ec; border-radius: 8px; padding: 8px 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+
 .row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }
 .row span { color: #5a6f8a; }
 .row strong { color: #1a1a1a; word-break: break-all; text-align: right; }
+
 .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; color: #fff; }
 .tag-big-odd { background: #c0392b; }
 .tag-big-even { background: #2980b9; }
@@ -22,16 +45,23 @@ h2 { font-size: 14px; color: #c0392b; margin: 10px 0 6px; border-bottom: 1px sol
 .tag-buy { background: #27ae60; }
 .tag-pred { background: #e67e22; }
 .tag-nopred { background: #95a5a6; }
+
+/* 窗口得分小方框 */
+.win-box { display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.win-item { border: 1px solid #dde3ec; border-radius: 4px; padding: 1px 6px; background: #f8f9fb; font-size: 11px; color: #2c3e50; font-weight: bold; min-width: 52px; text-align: center; }
+
 table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; }
 th, td { padding: 4px 6px; text-align: center; border: 1px solid #dde3ec; }
 th { background: #eef2f7; color: #1a3a5c; }
 .hit { color: #27ae60; font-weight: bold; }
 .miss { color: #e74c3c; font-weight: bold; }
 .pending { color: #f39c12; }
+
 .btn-reset { display: block; width: 100%; padding: 12px; margin-top: 8px; background: #e74c3c; color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 0.15s; }
 .btn-reset:active { background: #a93226; }
 .btn-reset.done { background: #27ae60; }
-#log { max-height: 140px; overflow-y: auto; background: #f0f2f5; padding: 8px; border-radius: 4px; font-size: 11px; color: #5a6f8a; margin-top: 10px; border: 1px solid #dde3ec; }
+
+#log { max-height: 140px; overflow-y: auto; background: rgba(255,255,255,0.92); padding: 8px; border-radius: 8px; font-size: 11px; color: #5a6f8a; margin-top: 10px; border: 1px solid #dde3ec; }
 #log p { margin-bottom: 2px; }
 </style>
 </head>
@@ -39,53 +69,62 @@ th { background: #eef2f7; color: #1a3a5c; }
 
 <h1>🎯 加拿大28 · 双模型预测系统 v13.5</h1>
 
-<div class="panel">
-  <h2>🔗 接口配置(3658kj)</h2>
-  <div class="row"><span>API_URL:</span><strong>https://api.3658kj.com/api/v1/trend/getHistoryList?lotCode=10029&amp;pageSize=100&amp;pageNum=0</strong></div>
-  <div class="row"><span>方法:</span><strong>GET</strong></div>
-  <div class="row"><span>轮询:</span><strong>10s</strong></div>
-  <div class="row"><span>解析:</span><strong>drawCode:"a,b,c"→三码→和值；drawIssue=期号；drawTime=开奖时间</strong></div>
+<div class="glass-wrap">
+  <!-- 第一行：接口配置 | 模型计算 -->
+  <div class="grid2">
+    <div class="panel">
+      <h2>🔗 接口配置(3658kj)</h2>
+      <div class="row"><span>API_URL:</span><strong>https://api.3658kj.com/api/v1/trend/getHistoryList?lotCode=10029&amp;pageSize=100&amp;pageNum=0</strong></div>
+      <div class="row"><span>方法:</span><strong>GET</strong></div>
+      <div class="row"><span>轮询:</span><strong>10s</strong></div>
+      <div class="row"><span>解析:</span><strong>drawCode:"a,b,c"→三码→和值；drawIssue=期号；drawTime=开奖时间</strong></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧮 模型计算方式（实时展开）</h2>
+      <div class="row"><span>模型A 各窗口得分:</span><strong id="a-windows"><span class="win-box"><span class="win-item">10窗:--</span><span class="win-item">20窗:--</span><span class="win-item">30窗:--</span><span class="win-item">50窗:--</span><span class="win-item">100窗:--</span></span></strong></div>
+      <div class="row"><span>模型A 加权概率:</span><strong id="a-prob">大 0% / 小 0%</strong></div>
+      <div class="row"><span>模型A 走势判定:</span><strong id="a-type">--</strong></div>
+      <div class="row"><span>模型B 最优seed:</span><strong id="b-seed">--</strong></div>
+      <div class="row"><span>模型B 命中率(全样本):</span><strong id="b-overall">--</strong></div>
+      <div class="row"><span>模型B 近30期命中率:</span><strong id="b-recent">--</strong></div>
+      <div class="row"><span>模型B 单/双权重:</span><strong id="b-prob">单 0% / 双 0%</strong></div>
+      <div class="row"><span>模型B 推三组:</span><strong id="b-groups">--</strong></div>
+    </div>
+
+    <!-- 第二行：当前预测 | 回测统计 -->
+    <div class="panel">
+      <h2>📊 当前预测</h2>
+      <div class="row"><span>目标期:</span><strong id="target-period">--</strong></div>
+      <div class="row"><span>上期:</span><strong id="prev-period">--</strong></div>
+      <div class="row"><span>上期开奖:</span><strong id="prev-open">--</strong></div>
+      <div class="row"><span>模型A (大/小):</span><strong id="model-a">--</strong></div>
+      <div class="row"><span>模型B (单/双):</span><strong id="model-b">--</strong></div>
+      <div class="row"><span>四组合评分:</span><strong id="combo-scores">--</strong></div>
+      <div class="row"><span>杀组:</span><strong id="kill-group" class="tag tag-kill">--</strong></div>
+      <div class="row"><span>买入候选:</span><strong id="buy-groups" class="tag tag-buy">--</strong></div>
+    </div>
+
+    <div class="panel">
+      <h2>📈 回测统计(本会话最多100期)</h2>
+      <div class="row"><span>已验证:</span><strong id="stat-total">0</strong></div>
+      <div class="row"><span>A模型 正确/错误/概率:</span><strong id="stat-a">正确0/错误0/0%</strong></div>
+      <div class="row"><span>B模型 正确/错误/概率:</span><strong id="stat-b">正确0/错误0/0%</strong></div>
+      <div class="row"><span>组合 正确/错误/概率:</span><strong id="stat-final">正确0/错误0/0%</strong></div>
+      <button class="btn-reset" id="btn-reset">🗑 清零统计</button>
+    </div>
+  </div>
 </div>
 
-<div class="panel">
-  <h2>📊 当前预测</h2>
-  <div class="row"><span>目标期:</span><strong id="target-period">--</strong></div>
-  <div class="row"><span>上期:</span><strong id="prev-period">--</strong></div>
-  <div class="row"><span>上期开奖:</span><strong id="prev-open">--</strong></div>
-  <div class="row"><span>模型A (大/小):</span><strong id="model-a">--</strong></div>
-  <div class="row"><span>模型B (单/双):</span><strong id="model-b">--</strong></div>
-  <div class="row"><span>四组合评分:</span><strong id="combo-scores">--</strong></div>
-  <div class="row"><span>杀组:</span><strong id="kill-group" class="tag tag-kill">--</strong></div>
-  <div class="row"><span>买入候选:</span><strong id="buy-groups" class="tag tag-buy">--</strong></div>
-</div>
-
-<div class="panel">
-  <h2>🧮 模型计算方式（实时展开）</h2>
-  <div class="row"><span>模型A 各窗口得分:</span><strong id="a-windows">--</strong></div>
-  <div class="row"><span>模型A 加权概率:</span><strong id="a-prob">大 0% / 小 0%</strong></div>
-  <div class="row"><span>模型A 走势判定:</span><strong id="a-type">--</strong></div>
-  <div class="row"><span>模型B 最优seed:</span><strong id="b-seed">--</strong></div>
-  <div class="row"><span>模型B 命中率(全样本):</span><strong id="b-overall">--</strong></div>
-  <div class="row"><span>模型B 近30期命中率:</span><strong id="b-recent">--</strong></div>
-  <div class="row"><span>模型B 单/双权重:</span><strong id="b-prob">单 0% / 双 0%</strong></div>
-  <div class="row"><span>模型B 推三组:</span><strong id="b-groups">--</strong></div>
-</div>
-
-<div class="panel">
-  <h2>📈 回测统计(本会话最多100期)</h2>
-  <div class="row"><span>已验证:</span><strong id="stat-total">0</strong></div>
-  <div class="row"><span>A模型 正确/错误/概率:</span><strong id="stat-a">正确0/错误0/0%</strong></div>
-  <div class="row"><span>B模型 正确/错误/概率:</span><strong id="stat-b">正确0/错误0/0%</strong></div>
-  <div class="row"><span>组合 正确/错误/概率:</span><strong id="stat-final">正确0/错误0/0%</strong></div>
-  <button class="btn-reset" id="btn-reset">🗑 清零统计</button>
-</div>
-
-<div class="panel">
-  <h2>📋 最近30期</h2>
-  <table>
-    <thead><tr><th>期号</th><th>开奖结果</th><th>和值</th><th>类型</th><th>预测答案</th><th>A</th><th>B</th><th>组合</th></tr></thead>
-    <tbody id="history-body"></tbody>
-  </table>
+<!-- 第三行：最近30期（全宽，独立毛玻璃框） -->
+<div class="glass-wrap">
+  <div class="panel-full">
+    <h2>📋 最近30期</h2>
+    <table>
+      <thead><tr><th>期号</th><th>开奖结果</th><th>和值</th><th>类型</th><th>预测答案</th><th>A</th><th>B</th><th>组合</th></tr></thead>
+      <tbody id="history-body"></tbody>
+    </table>
+  </div>
 </div>
 
 <div id="log"><p>⏳ 启动中...</p></div>
@@ -253,7 +292,6 @@ function parseAPI(raw){
 }
 
 function resetStats(){
-  // 只清零对错计数，records 完全不动
   session.aCorrect=0; session.aWrong=0;
   session.bCorrect=0; session.bWrong=0;
   session.fCorrect=0; session.fWrong=0;
@@ -299,7 +337,6 @@ function verifyOne(){
 }
 
 function checkAutoReset(){
-  // 已验证数量 = 当前统计窗口内的总验证数 = aCorrect + aWrong
   const verifiedCount = session.aCorrect + session.aWrong;
   if(verifiedCount >= MAX_VERIFIED_RECORDS){
     session.aCorrect=0; session.aWrong=0;
@@ -322,7 +359,7 @@ function updateUI(){
 
   const resA=predictA(historyData);
   document.getElementById("model-a").textContent=resA.prediction;
-  document.getElementById("a-windows").textContent=A_WINDOWS.map(w=>`${w}窗:${resA.windows[w].score.toFixed(3)}`).join(" ");
+  document.getElementById("a-windows").innerHTML = '<span class="win-box">' + A_WINDOWS.map(w=>`<span class="win-item">${w}窗:${resA.windows[w].score.toFixed(3)}</span>`).join("") + '</span>';
   document.getElementById("a-prob").textContent=`大 ${(resA.weightedProbability["大"]*100).toFixed(1)}% / 小 ${(resA.weightedProbability["小"]*100).toFixed(1)}%`;
   document.getElementById("a-type").textContent=resA.type;
 
@@ -345,7 +382,6 @@ function updateUI(){
     }
   }
 
-  // ★ 关键：已验证 = aCorrect + aWrong（当前统计窗口的真实验证数，清零就归零）
   const verifiedCount = session.aCorrect + session.aWrong;
   document.getElementById("stat-total").textContent = verifiedCount;
 
@@ -430,7 +466,7 @@ document.addEventListener("visibilitychange", () => {
 
 document.getElementById("btn-reset").addEventListener("click", resetStats);
 
-logMsg("🚀 启动 v13.5，已验证=aCorrect+aWrong，清零归零，预测答案永久保留");
+logMsg("🚀 启动 v13.5，毛玻璃双列布局，窗口得分方框，已验证=aCorrect+aWrong");
 pull();
 setInterval(pull, CHECK_INTERVAL);
 </script>
