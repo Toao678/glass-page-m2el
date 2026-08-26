@@ -238,12 +238,41 @@ function buildKill(a,b){
   return{scores:sc,killedGroup:killed,recommended:ranked.slice(0,-1).map(x=>x[0])};
 }
 
+// ====== 留存补丁：完整状态持久化 ======
+var SNAP_KEY = 'pc28_v135_snap_v1';
+function persistAll() {
+  try {
+    var snap = {
+      ts: Date.now(),
+      session: session,
+      historyLen: historyData.length,
+      lastNbr: historyData.length ? historyData[historyData.length-1].nbr : null
+    };
+    localStorage.setItem(SNAP_KEY, JSON.stringify(snap));
+    localStorage.setItem("pc28_session", JSON.stringify(session));
+  } catch(e) {}
+}
+function restoreAll() {
+  try {
+    var raw = localStorage.getItem(SNAP_KEY);
+    if (!raw) return false;
+    var snap = JSON.parse(raw);
+    if (snap.session) {
+      session = snap.session;
+      saveSession();
+    }
+    return true;
+  } catch(e) { return false; }
+}
+
 let historyData=[];
 let session={aCorrect:0,aWrong:0,bCorrect:0,bWrong:0,fCorrect:0,fWrong:0,records:[]};
 
 function saveSession(){ try{ localStorage.setItem("pc28_session", JSON.stringify(session)); }catch(e){} }
 function loadSession(){ try{ const raw=localStorage.getItem("pc28_session"); if(raw){ const s=JSON.parse(raw); session={aCorrect:s.aCorrect||0,aWrong:s.aWrong||0,bCorrect:s.bCorrect||0,bWrong:s.bWrong||0,fCorrect:s.fCorrect||0,fWrong:s.fWrong||0,records:s.records||[]}; } }catch(e){} }
-loadSession();
+
+// 启动时先尝试从快照恢复，失败再走普通loadSession
+restoreAll() || loadSession();
 
 function logMsg(m){ const l=document.getElementById("log"); const p=document.createElement("p"); p.textContent=`[${new Date().toLocaleTimeString()}] ${m}`; l.appendChild(p); l.scrollTop=l.scrollHeight; }
 
@@ -256,11 +285,9 @@ function parseAPI(raw){
     if(!nbr)continue;
 
     let sum=null;
-    // 优先用 result.pc28_total(接口直出和值)
     if(it.result && it.result.pc28_total !== undefined && it.result.pc28_total !== null && it.result.pc28_total !== ""){
       sum = parseInt(it.result.pc28_total);
     }
-    // 兜底：从 drawCode 三码相加
     if(isNaN(sum)){
       const parts=String(it.drawCode).split(",").map(x=>parseInt(x.trim()));
       if(parts.length!==3||parts.some(isNaN))continue;
@@ -281,7 +308,7 @@ function resetStats(){
   session.aCorrect=0; session.aWrong=0;
   session.bCorrect=0; session.bWrong=0;
   session.fCorrect=0; session.fWrong=0;
-  saveSession();
+  saveSession(); persistAll();
   updateUI();
   logMsg("🗑 统计已清零(仅清计数，预测答案永久保留)");
   const btn = document.getElementById("btn-reset");
@@ -301,7 +328,7 @@ function verifyOne(){
   if(rec.predB){ if(act.type[1]===rec.predB) session.bCorrect++; else session.bWrong++; }
   if(rec.killed){ if(act.type!==rec.killed) session.fCorrect++; else session.fWrong++; }
   rec.status="已验证";
-  saveSession();
+  saveSession(); persistAll();
   return true;
 }
 
@@ -311,7 +338,7 @@ function checkAutoReset(){
     session.aCorrect=0; session.aWrong=0;
     session.bCorrect=0; session.bWrong=0;
     session.fCorrect=0; session.fWrong=0;
-    saveSession();
+    saveSession(); persistAll();
     logMsg("🔄 已验证达100期，回测统计自动清零");
     return true;
   }
@@ -380,6 +407,9 @@ function updateUI(){
     tr.innerHTML=`<td>${h.nbr}</td><td>${h.number}</td><td>${h.sum}</td><td><span class="tag ${cls}">${h.type}</span></td><td><span class="tag ${predTagClass}">${predText}</span></td><td>${aCell}</td><td>${bCell}</td><td>${fCell}</td>`;
     tb.appendChild(tr);
   });
+
+  // 每次渲染完立即落盘
+  persistAll();
 }
 
 async function pull(){
@@ -402,16 +432,31 @@ async function pull(){
   }
 }
 
+// ====== 切回前台：先恢复缓存视图，再拉新校正 ======
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
-    logMsg("👁 切回前台，重新拉取数据");
+    logMsg("👁 切回前台，恢复缓存并重新拉取");
+    // 从快照恢复 session 并立即渲染（不等接口）
+    if (restoreAll()) {
+      // 重建 historyData 为空时 updateUI 会 bail，但 session 已恢复
+      // 如果之前有数据，用缓存的 session 重绘表格
+      updateUI();
+    }
+    pull();
+  }
+});
+
+window.addEventListener("pageshow", function(e) {
+  if (e.persisted) {
+    logMsg("📄 从 bfcache 恢复");
+    if (restoreAll()) updateUI();
     pull();
   }
 });
 
 document.getElementById("btn-reset").addEventListener("click", resetStats);
 
-logMsg("🚀 启动 v13.5，数据对接：result.pc28_total优先→drawCode兜底");
+logMsg("🚀 启动 v13.5，数据对接：result.pc28_total优先→drawCode兜底，已启用状态留存");
 pull();
 setInterval(pull, CHECK_INTERVAL);
 </script>
